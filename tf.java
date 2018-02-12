@@ -1,20 +1,31 @@
-package tst;
-
 import java.awt.EventQueue;
-
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import java.awt.Font;
-
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JTextField;
 import javax.swing.JRadioButton;
-
 import java.awt.TextArea;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.Dimension;
+
+import java.io.File;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Result;
+import javax.xml.transform.Source;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+ 
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 
 
 /**
@@ -36,6 +47,9 @@ public class tf {
 	private String userSearch[];
 	private TextArea quoteSResults;//variable for the text field for the quotes found in the search 
 	private TextArea recentSearch;
+	private final String filename="quotes.XML";
+	private JTextField addQuoteField;
+	private JTextField addAuthorField;
 	/**
 	 * Launch the application.
 	 */
@@ -57,18 +71,17 @@ public class tf {
 	 */
 	public tf() {
 		initialize();
-		
 	}
 
 	/**
 	 * Initialize the contents of the frame.
 	 */
 	private void initialize() {
-		list=quotes(list);//adds 6 Quotes to the Quotes list
+		list=readQuotesXML(list);//reads quote form XML file
 		userSearch=new String[5];
 		
 		frame = new JFrame();
-		frame.setBounds(100, 100, 546, 416);
+		frame.setBounds(100, 100, 781, 432);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.getContentPane().setLayout(null);
 		
@@ -117,14 +130,11 @@ public class tf {
 		bothRButt.setBounds(178, 194, 50, 22);
 		frame.getContentPane().add(bothRButt);
 		
-	
-		
 		JButton searchButt = new JButton("search");
 		searchButt.setFont(new Font("Tahoma", Font.PLAIN, 10));
 		searchButt.setBounds(61, 231, 65, 22);
 		frame.getContentPane().add(searchButt);
 		searchButt.addActionListener(new searchQuote());
-		
 		
 		JButton resetButt = new JButton("reset");
 		resetButt.setFont(new Font("Tahoma", Font.PLAIN, 10));
@@ -133,8 +143,7 @@ public class tf {
 		resetButt.addActionListener(new resetSearchBar());
 		
 		//Groups Radio Buttons together		
-		radioButtGroup(bothRButt,quoteRButt, authorRButt);
-		
+		radioButtGroup(bothRButt,quoteRButt, authorRButt);		
 		
 		JLabel label5 = new JLabel("User Searches");
 		label5.setBounds(430, 125, 88, 14);
@@ -148,7 +157,7 @@ public class tf {
 		recentSearch.setEditable(false);
 		
 		quoteSResults=new TextArea("");
-		quoteSResults.setBounds(15, 292, 503, 75);
+		quoteSResults.setBounds(15, 266, 503, 101);
 		frame.getContentPane().add(quoteSResults);
 		quoteSResults.setPreferredSize(new Dimension(500, 75));
 		quoteSResults.setEditable(false);
@@ -158,6 +167,110 @@ public class tf {
 		randQArea.setBounds(15, 53, 484, 58);
 		frame.getContentPane().add(randQArea);
 		randQArea.setEditable(false);		
+		
+		JLabel lblNewLabel = new JLabel("Add New Quote");
+		lblNewLabel.setBounds(612, 53, 88, 15);
+		frame.getContentPane().add(lblNewLabel);
+		
+		JLabel lblQuote = new JLabel("Quote:");
+		lblQuote.setBounds(555, 83, 46, 14);
+		frame.getContentPane().add(lblQuote);
+		
+		addQuoteField = new JTextField();
+		addQuoteField.setBounds(600, 79, 122, 20);
+		frame.getContentPane().add(addQuoteField);
+		addQuoteField.setColumns(10);
+		
+		JLabel lblNewLabel_1 = new JLabel("Author:");
+		lblNewLabel_1.setBounds(555, 121, 46, 14);
+		frame.getContentPane().add(lblNewLabel_1);
+		
+		addAuthorField = new JTextField();
+		addAuthorField.setBounds(599, 122, 123, 20);
+		frame.getContentPane().add(addAuthorField);
+		addAuthorField.setColumns(10);
+		
+		JLabel addSuccessFail = new JLabel("");//Add Quote Success/Fail Label- tells if add quote was successful or not
+		addSuccessFail.setBounds(612, 184, 110, 15);
+		frame.getContentPane().add(addSuccessFail);
+		
+		
+		JButton addQuoteButton = new JButton("Add");
+		addQuoteButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				String message=addQuote();
+				System.out.println(message);
+				addSuccessFail.setText(message);
+				}	
+		});
+		addQuoteButton.setBounds(612, 150, 89, 23);
+		frame.getContentPane().add(addQuoteButton);
+		
+		
+	}
+	/*if quote meets qualifications (isGoodQuote==true) it will return an add successful message for
+	 * the addSuccessFail JLabel so the user can see it, else will return add fail message*/
+	
+	private String addQuote()
+	{
+		//if passes tests then add to list, else do nothing
+		if(textFieldNotNull()) 
+		{
+			if(isGoodQuote())
+			{
+				Quote temp= new Quote(addAuthorField.getText(),addQuoteField.getText());
+				list.setQuote(temp);//adds the temporary quote(temp) to the quote list
+				writeQuotesXML();//writes new quote to list
+				return "Add Successful!"; 
+			}
+			addAuthorField.setText(null);//user's entered text is erased after add button pressed
+			addQuoteField.setText(null);
+			return "Add Failed.";
+		}
+		return null;
+	}
+	private boolean isGoodQuote()//series of boolean test to ensure good quotes entered
+	{
+		if(isValidAuthor()&&notQuoteMax()&&isCapital(addAuthorField)&&isCapital(addQuoteField))
+			return true;
+		return false;
+	}
+	private boolean textFieldNotNull()//returns false if author or quote is left blank in textField  
+	{
+		if(addAuthorField.getText()!=null||addQuoteField.getText()!=null)
+			return true;
+		return false;
+	}
+	
+	private boolean isValidAuthor()//returns true if ascii char is lowercase/uppercase letter or space
+	{
+		char [] temp=addAuthorField.getText().toCharArray();
+		System.out.println(temp.length);
+		for(int i=0;i<temp.length;i++)
+		{
+			if(	!Character.isLowerCase(temp[i]))
+					if(temp[i]!=32)
+					{
+						if(!Character.isUpperCase(temp[i]))
+							return false;
+					}
+		}
+		
+		return true;
+	}
+	
+	private boolean notQuoteMax()//returns true if quote list size is 40 or less
+	{
+		if(list.getSize()<=40)
+			return true;
+		return false;
+	}
+	private boolean isCapital(JTextField t)//makes sure Capital letter is the only 1st char allowed
+	{
+		char[] temp=t.getText().toCharArray();
+		if(temp[0]>64&&temp[0]<91)
+			return true;
+		return false;
 	}
 	
 //Groups the radio search buttons (quote,author,both) together, prevents multiple radio buttons from being selected	
@@ -169,30 +282,80 @@ public class tf {
 		radio.add(c);
 	}
 	
-//Creates 6 instances of Quote and adds each one to the QuoteList, then returns the list
-	public QuoteList quotes(QuoteList list) {
-		Quote temp =new Quote("Don Cunningham","Eschew obfuscation!");
-		list.setQuote(temp);
-		
-		temp=new Quote("H. L. Mencken","For every problem there is one solution which is simple, neat, and wrong.");
-		list.setQuote(temp);
-		
-		temp=new Quote("Ramsey Clark","A right is not what someone gives you; it's what no one can take from you.</");
-		list.setQuote(temp);
-		
-		temp=new Quote("Joseph Addison","Don't tell me how hard you work. Tell me how much you get done");
-		list.setQuote(temp);
-		
-		temp=new Quote("John Keats","Nothing ever becomes real till it is experienced; even a proverb is no proverb to"
-				+ " you till your life has illustrated it.");
-		list.setQuote(temp);
-		
-		temp=new Quote("Bill Rogers","No one who works a forty hour week is ever going to beat me.");
-		list.setQuote(temp);
-		
-		return list;
+	//reads and returns list 
+	public QuoteList readQuotesXML(QuoteList list) {
+	
+		QuoteSaxParser qList =new QuoteSaxParser(filename);
+		return qList.getQuoteList();
 	}
 	 
+
+///////////////////////////////////////////////////////////////////////
+	public void writeQuotesXML()
+	{   
+	        try {
+	        	DocumentBuilderFactory quoteDoc = DocumentBuilderFactory.newInstance();
+	        	DocumentBuilder quoteBuilder = quoteDoc.newDocumentBuilder();
+	            Document doc = quoteBuilder.newDocument();
+	            Element mainRootElement = doc.createElementNS("w.XML", "quote-list");
+	            doc.appendChild(mainRootElement);
+	 
+	            //add quote instances to the root 
+	            for(int i=0;i<list.getSize();i++)
+	            {
+	            	mainRootElement.appendChild(quoteToDoc(doc,list.getQuote(i).getQuoteText(), list.getQuote(i).getAuthor()));
+	            }
+	           
+	            createXML(doc);
+	 
+	        } catch (Exception e) {
+	            e.printStackTrace();
+	        }
+	
+	}
+	
+	
+	 private Node quoteToDoc(Document doc, String quoteText, String author) {
+	        Element q = doc.createElement("quote");
+	        q.appendChild(createNode(doc, q, "quote-text", quoteText));
+	        q.appendChild(createNode(doc, q, "author", author));
+	     
+	        return q;
+	    }
+	 
+	 private Node createNode(Document doc, Element element, String type, String value) {
+	        Element node = doc.createElement(type);
+	        node.appendChild(doc.createTextNode(value));
+	        return node;
+	    }
+
+	 //puts doc file to XML file 
+	 private void createXML(Document doc)
+	 {     
+		 Source s = new DOMSource(doc);
+		 Transformer newXML=null;
+		 File file = new File(filename);
+		 Result result = new StreamResult(file);
+
+		 try {
+			newXML = TransformerFactory.newInstance().newTransformer();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		 try {
+			newXML.transform(s, result);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	 }
+
+	
+/////////////////////////////////////////////////////////////////////////	
+	
+	
+	
 	public class genRandQuote implements ActionListener
 	{
 		@Override
@@ -328,6 +491,5 @@ public class tf {
 		temp[4]=text;
 		userSearch=temp;
 	}
-	
 }
 
