@@ -52,11 +52,20 @@ public class QuoteList
     */
    public QuoteList search (String searchString, int mode)
    {
+	 
       QuoteList returnQuote = new QuoteList();
       Quote quote;
+      
+      
       for (int i = 0; i < quoteArray.size(); i++)
-      {
+      {  
          quote = quoteArray.get (i);
+         while(quote.getKeyword()==null)
+         {
+        	 i++;
+        	 quote=quoteArray.get(i);
+         }
+        	 
          if (mode == SearchAuthorVal && quote.getAuthor().toLowerCase().indexOf (searchString.toLowerCase()) != -1)
          {  // Found a matching author, save it
             // System.out.println ("Matched Author ");
@@ -72,7 +81,16 @@ public class QuoteList
             // System.out.println ("Matched Both ");
             returnQuote.setQuote (quote);
          }
+         
+         else if (mode==4)//&&quote.getKeyword().toLowerCase().indexOf (searchString.toLowerCase()) != -1)
+         {
+        	
+        	 if(quote.getKeyword().equalsIgnoreCase(searchString)&&quote.getKeyword()!=null) 
+        		 	returnQuote.setQuote(quote);
+         }
+     
       }
+     
       return returnQuote;
    }
 

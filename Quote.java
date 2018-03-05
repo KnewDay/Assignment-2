@@ -9,12 +9,14 @@ public class Quote
 {
    private String author;
    private String quoteText;
+   private String keyword;
 
    // Default constructor does nothing
    public Quote ()
    {
 	   author="Dasjah Berry";
 	   quoteText="Ya gotta do, what ya gotta do...even when ya don't want to!!!";
+	   keyword=null;
    }
 
    // Constructor that assigns both strings
@@ -44,6 +46,16 @@ public class Quote
       this.quoteText = quoteText;
    }
 
+   public void setKeyword(String keyword)
+   {
+	   this.keyword=keyword;
+   }
+   
+   public String getKeyword()
+   {
+	   return keyword;
+   }
+   
    @Override
    public String toString ()
    {

@@ -3,6 +3,7 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import java.awt.Font;
 import javax.swing.ButtonGroup;
+import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JTextField;
 import javax.swing.JRadioButton;
@@ -26,6 +27,8 @@ import javax.xml.transform.stream.StreamResult;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
+import javax.swing.JList;
+import java.awt.Choice;
 
 
 /**
@@ -43,13 +46,15 @@ public class tf {
 	private QuoteList list=new QuoteList();
 	private Quote quote=new Quote();
 	private TextArea randQArea; //variable for the text box for the random quote
-	private JRadioButton bothRButt,quoteRButt, authorRButt;//the 3 radio buttons (author, quotes, both)
+	private JRadioButton bothRButt,quoteRButt, authorRButt, keyButton;//the 3 radio buttons (author, quotes, both)
 	private String userSearch[];
 	private TextArea quoteSResults;//variable for the text field for the quotes found in the search 
 	private TextArea recentSearch;
 	private final String filename="quotes.XML";
 	private JTextField addQuoteField;
 	private JTextField addAuthorField;
+	private JTextField keyField;
+	
 	/**
 	 * Launch the application.
 	 */
@@ -81,7 +86,7 @@ public class tf {
 		userSearch=new String[5];
 		
 		frame = new JFrame();
-		frame.setBounds(100, 100, 781, 432);
+		frame.setBounds(100, 100, 859, 628);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.getContentPane().setLayout(null);
 		
@@ -130,6 +135,11 @@ public class tf {
 		bothRButt.setBounds(178, 194, 50, 22);
 		frame.getContentPane().add(bothRButt);
 		
+		keyButton = new JRadioButton("Keyword");
+		keyButton.setBounds(244, 194, 109, 23);
+		frame.getContentPane().add(keyButton);
+				
+		
 		JButton searchButt = new JButton("search");
 		searchButt.setFont(new Font("Tahoma", Font.PLAIN, 10));
 		searchButt.setBounds(61, 231, 65, 22);
@@ -143,7 +153,7 @@ public class tf {
 		resetButt.addActionListener(new resetSearchBar());
 		
 		//Groups Radio Buttons together		
-		radioButtGroup(bothRButt,quoteRButt, authorRButt);		
+		radioButtGroup(bothRButt,quoteRButt, authorRButt,keyButton);		
 		
 		JLabel label5 = new JLabel("User Searches");
 		label5.setBounds(430, 125, 88, 14);
@@ -206,6 +216,33 @@ public class tf {
 		addQuoteButton.setBounds(612, 150, 89, 23);
 		frame.getContentPane().add(addQuoteButton);
 		
+		Choice choice = new Choice();
+		choice.setBounds(10, 410, 553, 20);
+		frame.getContentPane().add(choice);
+		for(int i=0;i<list.getSize();i++)//adds all quotes to the list
+			choice.add(list.getQuote(i).getQuoteText());
+		
+		JLabel lblAddKeyword = new JLabel("Keyword");
+		lblAddKeyword.setBounds(15, 383, 88, 14);
+		frame.getContentPane().add(lblAddKeyword);
+		
+		keyField = new JTextField();
+		keyField.setBounds(10, 446, 132, 20);
+		frame.getContentPane().add(keyField);
+		keyField.setColumns(10);
+		
+		
+		JButton btnAddKeyword = new JButton("Add Keyword");
+		btnAddKeyword.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				Keyword k=new Keyword();
+				if(keyField.getText()!=null&&choice.getSelectedIndex()!=-1)
+					k.addKeyword(list, choice.getSelectedIndex(), keyField.getText());
+				}	
+		});
+		btnAddKeyword.setBounds(10, 487, 132, 23);
+		frame.getContentPane().add(btnAddKeyword);
+		
 		
 	}
 	/*if quote meets qualifications (isGoodQuote==true) it will return an add successful message for
@@ -220,7 +257,7 @@ public class tf {
 			{
 				Quote temp= new Quote(addAuthorField.getText(),addQuoteField.getText());
 				list.setQuote(temp);//adds the temporary quote(temp) to the quote list
-				writeQuotesXML();//writes new quote to list
+				writeQuotesXML(list);//writes new quote to list
 				return "Add Successful!"; 
 			}
 			addAuthorField.setText(null);//user's entered text is erased after add button pressed
@@ -274,12 +311,13 @@ public class tf {
 	}
 	
 //Groups the radio search buttons (quote,author,both) together, prevents multiple radio buttons from being selected	
-	public void radioButtGroup(JRadioButton a,JRadioButton b, JRadioButton c)
+	public void radioButtGroup(JRadioButton a,JRadioButton b, JRadioButton c, JRadioButton d)
 	{
 		ButtonGroup radio=new ButtonGroup();
 		radio.add(a);
 		radio.add(b);
 		radio.add(c);
+		radio.add(d);
 	}
 	
 	//reads and returns list 
@@ -291,7 +329,7 @@ public class tf {
 	 
 
 ///////////////////////////////////////////////////////////////////////
-	public void writeQuotesXML()
+	public void writeQuotesXML(QuoteList list)
 	{   
 	        try {
 	        	DocumentBuilderFactory quoteDoc = DocumentBuilderFactory.newInstance();
@@ -303,7 +341,7 @@ public class tf {
 	            //add quote instances to the root 
 	            for(int i=0;i<list.getSize();i++)
 	            {
-	            	mainRootElement.appendChild(quoteToDoc(doc,list.getQuote(i).getQuoteText(), list.getQuote(i).getAuthor()));
+	            	mainRootElement.appendChild(quoteToDoc(doc,list.getQuote(i).getQuoteText(), list.getQuote(i).getAuthor(),list.getQuote(i).getKeyword()));
 	            }
 	           
 	            createXML(doc);
@@ -315,11 +353,11 @@ public class tf {
 	}
 	
 	
-	 private Node quoteToDoc(Document doc, String quoteText, String author) {
+	 private Node quoteToDoc(Document doc, String quoteText, String author, String keyword) {
 	        Element q = doc.createElement("quote");
 	        q.appendChild(createNode(doc, q, "quote-text", quoteText));
 	        q.appendChild(createNode(doc, q, "author", author));
-	     
+	        q.appendChild(createNode(doc,q,"keyword",keyword));
 	        return q;
 	    }
 	 
@@ -354,8 +392,16 @@ public class tf {
 	
 /////////////////////////////////////////////////////////////////////////	
 	
-	
-	
+//	 public class Keyword implements ActionListener {
+//
+//			@Override
+//			public void actionPerformed(ActionEvet arg0) {
+//				// TODO Auto-generated method stub
+//				
+//			}
+//	 
+//	 }
+//	
 	public class genRandQuote implements ActionListener
 	{
 		@Override
@@ -411,6 +457,11 @@ public class tf {
 			searches=authorSearch(foundQuotes, searchString) +quoteSearch(foundQuotes, searchString);
 		}
 		
+		else if(keyButton.isSelected())
+		{
+			searches=keywordSearch(foundQuotes,searchString);
+		}
+		
 		return searches;
 	}
 	
@@ -449,6 +500,14 @@ public class tf {
 		return searchesQuote;
 	}
 	
+	public String keywordSearch(QuoteList foundQuotes, String searchString)
+	{
+		String key="";
+		foundQuotes=list.search(searchString, 4);///search by keyword
+		if(foundQuotes!=null)
+			key=searchListToString(foundQuotes);
+		return key;
+	}
 	
 	//adds the searched item to the array
 	public void addToUserSearch(String text)
